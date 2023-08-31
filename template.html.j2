@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>{{ title }}</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
+
+	<meta name="description" content="{{ description }}">
+	<meta name="author" content="Nicolai Søborg">
+
+	<!-- Cactus comments
+	<link type="text/css" rel="stylesheet" href="https://latest.cactus.chat/style.css"> -->
+</head>
+<body>
+<header>
+	<nav id="menunav" class="navbar fixed-top navbar-expand-lg bg-body-tertiary" data-bs-theme="dark">
+		<div class="container-fluid">
+			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarToggle" aria-controls="navbarToggle" aria-expanded="false" aria-label="Toggle menu">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div class="collapse navbar-collapse" id="navbarToggle">
+				<a class="navbar-brand" href="index.html"><strong>Gallery</strong></a>
+				<ul class="navbar-nav me-auto mb-2 mb-lg-0">
+				{%- for name, link in sections %}
+					<li class="nav-item">
+						{%- if is_index %}
+						<a class="nav-link" href="#{{ name | replace(' ', '') }}">{{ name }}</a>
+						{%- else %}
+						<a class="nav-link{{ ' active' if image.section == name }}" href="{{ link }}">{{ name }}</a>
+						{%- endif %}
+					</li>
+				{%- endfor %}
+				</ul>
+			</div>
+		</div>
+	</nav>
+	<br><br>{# hack because nav-bar is fixed and overlapping top of page.. #}
+</header>
+{%- macro img_src(img, height=None) -%}
+{{ public_container_url }}/{{ img.unique_name }}{% if height %}-{{ height }}{% endif %}.{{ img.ext }}?{{ SAS_TOKEN }}
+{%- endmacro -%}
+{%- macro insert_img(img, height, kwargs, loading="eager") -%}
+	<img src="{{ img_src(img, height) }}"
+		height="{{ height }}" {%- for k, v in kwargs.items() %} {{ k }}="{{ v }}" {%- endfor %}
+		loading="{{ loading }}" alt="Image: {{ img.pic_orig_name }}">
+{% endmacro %}
+<main class="container">
+	{%- if is_index %}
+	<div data-bs-spy="scroll" data-bs-target="#menunav" class="row row-cols-sm-1 row-cols-md-1 row-cols-lg-2 row-cols-xl-3 py-5">
+		{%- set last_section = namespace(section="") -%}
+		{%- for img in images %}
+		<div class="col"{% if last_section.section != img.section %}{% set last_section.section = img.section %}id="{{ img.section | replace(' ', '') }}"{% endif %}>
+			<p>
+				<a href="{{ img.unique_name }}.html">
+					{%- set loading = "lazy" -%}
+					{%- if loop.index < 20 -%}
+						{%- set loading = "eager" -%}
+					{%- endif %}
+					{{ insert_img(img, HEIGHT_SMALL, {
+						"class": "rounded mx-auto d-block",
+						"decoding": "async",
+					}, loading) }}
+					{#- fetchpriority="high / low / auto" #}
+				</a>
+			</p>
+		</div>
+		{%- endfor %}
+	</div>
+	{%- else %}
+	<map name="nextprev" class="row py-3">
+		{%- set width, height = image.xy %}
+		<div class="col col-md-auto text-left">
+		{%- if image.get('prev_file') %}
+			<a href="{{ image.prev_file }}.html" accesskey="p" title="[Alt]+[Shift]+[P] for previous image" class="btn btn-secondary" role="button">&laquo; Previous</a>
+			<area shape="rect" coords="0,0,{{ width/100*20|round|int }},{{ height }}" alt="Previous" href="{{ image.prev_file }}.html">
+		{%- else %}
+			<a href="#" class="btn btn-secondary disabled" role="button">&laquo; Previous</a>
+		{%- endif %}
+		</div>
+		<div class="col d-none d-md-block text-center">
+			<h3>{{ image.pic_orig_name }} &mdash; {{ img_idx+1 }} / {{ images|length }}</h3>
+		</div>
+		<div class="col col-md-auto text-right">
+		{%- if image.get('next_file') %}
+			<a href="{{ image.next_file }}.html" accesskey="n" title="[Alt]+[Shift]+[N] for next image" class="btn btn-secondary">Next &raquo;</a>
+			<area shape="rect" coords="{{ (width/100)*80|round|int }},0,{{ width }},{{ height }}" alt="Next" href="{{ image.next_file }}.html">
+		{%- else %}
+			<a href="#" class="btn btn-secondary disabled" role="button">Next &raquo;</a>
+		{%- endif %}
+		</div>
+	</map>
+	<div class="row">
+		<div class="col text-center">
+			<p>{{ insert_img(image, HEIGHT_LARGE, {
+				"class": "img-fluid",
+				"usemap": "#nextprev",
+			}) }}</p>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col">
+			<p>
+				<a class="btn btn-primary" filename="{{ image.pic_orig_name }}" href="{{ img_src(image) }}">Download Original ({{ image.filesize }})</a>
+				<span style="float: right">{{ image.pic_txt }}</span>
+			</p>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col">
+			<details>
+				<summary>Detaljer</summary>
+				<pre>{{ image.exif }}</pre>
+			</details>
+		</div>
+	</div>
+	<!--<div class="row">
+		<div class="col">
+			<p>Tilføj en offentlig kommentar med <i>Cactus Comments</i>:</p>
+			<script src="https://latest.cactus.chat/cactus.js" crossorigin="anonymous" data-default-homeserver-url="https://matrix.cactus.chat:8448" data-server-name="cactus.chat" data-site-name="søb.org" data-comment-section-id="gallery-{{ image.unique_name }}"></script> 
+		</div>
+	</div> -->
+	<script src="./navigation.js"></script>
+	{%- endif -%}
+</main>
+<br>
+<footer class="footer mt-auto py-3 bg-light">
+	<div class="container">
+		<span class="text-muted">{{ description }}</span>
+	</div>
+</footer>
+</body>
+</html>
